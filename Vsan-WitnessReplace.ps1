@@ -10,6 +10,8 @@ Website: http://www.jasemccarty.com
 .DESCRIPTION
 This script removes a Witness host for 2 Node and Stretched Cluster vSAN & replaces it.
 
+Requires PowerCLI 6.5 R1  vSphere/vSAN 6.5 (possibly vSphere 6.0U2a/vSAN 6.2)
+
 Syntax is:
 Vsan-ReplaceWitness.ps1 -ClusterName <ClusterName> -NewWitness <WitnessFQDN>
 
