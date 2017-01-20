@@ -110,8 +110,9 @@ If($Cluster.VsanEnabled){
 				Write-Host "Current Witness:  ""$CWH"" New Witness: ""$NewWitness"""
 				
 				# Get the disk group of the existing vSAN Witness
-				$CWHDG = Get-VsanDiskGroup | Where-Object {$_.VMHost -like $CWH}
-
+				$CWHDG = Get-VsanDiskGroup | Where-Object {$_.VMHost -like $CWH} -ErrorAction SilentlyContinue
+				
+				
 				# Remove the existing disk group, so this Witness could be used later
 				Write-Host "Removing vSAN Disk Group from $CWH so it can be easily reused later" -foregroundcolor black -backgroundcolor white
 				Remove-VsanDiskGroup -VsanDiskGroup $CWHDG -DataMigrationMode "NoDataMigration" -Confirm:$False 
