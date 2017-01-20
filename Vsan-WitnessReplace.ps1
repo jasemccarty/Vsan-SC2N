@@ -66,6 +66,7 @@ If($Cluster.VsanEnabled){
 		# We'll need to see what the name of the current witness is.
 		$CWH = $VsanConfig.WitnessHost
 		
+		
 			# If the Old & New Witness are named the same, no need to perform a replacement
 			If ($NewWitness -ne $CWH.Name) {
 			
@@ -109,14 +110,20 @@ If($Cluster.VsanEnabled){
 				#Write-Host "The Preferred Fault Domain is ""$PFD"""
 				Write-Host "Current Witness:  ""$CWH"" New Witness: ""$NewWitness"""
 				
-				# Get the disk group of the existing vSAN Witness
-				$CWHDG = Get-VsanDiskGroup | Where-Object {$_.VMHost -like $CWH} -ErrorAction SilentlyContinue
+				# If the Existing Witness is connected or in maintenance mode, go ahead and cleanly unmount the disk group
+				# We will assume that if it isn't connected, it has failed, and we just need to replace it.
+				If ($CWH.ConnectionState -eq "Connected" -or $CWH.ConnectionState -eq "Maintenance") {
+				
+					# Get the disk group of the existing vSAN Witness
+					$CWHDG = Get-VsanDiskGroup | Where-Object {$_.VMHost -like $CWH} -ErrorAction SilentlyContinue
 				
 				
-				# Remove the existing disk group, so this Witness could be used later
-				Write-Host "Removing vSAN Disk Group from $CWH so it can be easily reused later" -foregroundcolor black -backgroundcolor white
-				Remove-VsanDiskGroup -VsanDiskGroup $CWHDG -DataMigrationMode "NoDataMigration" -Confirm:$False 
+					# Remove the existing disk group, so this Witness could be used later
+					Write-Host "Removing vSAN Disk Group from $CWH so it can be easily reused later" -foregroundcolor black -backgroundcolor white
+				    Remove-VsanDiskGroup -VsanDiskGroup $CWHDG -DataMigrationMode "NoDataMigration" -Confirm:$False 
 
+				}
+				
 				# Set the cluster configuration to false - Necessary to swap Witness Appliances
 				Write-Host "Removing Witness $CWH from the vSAN cluster" -foregroundcolor black -backgroundcolor white
 				Set-VsanClusterConfiguration -Configuration $Cluster -StretchedClusterEnabled $false 
