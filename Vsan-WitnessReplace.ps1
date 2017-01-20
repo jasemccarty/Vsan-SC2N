@@ -10,8 +10,6 @@ Website: http://www.jasemccarty.com
 .DESCRIPTION
 This script removes a Witness host for 2 Node and Stretched Cluster vSAN & replaces it.
 
-Requires PowerCLI 6.5 R1  vSphere/vSAN 6.5 (possibly vSphere 6.0U2a/vSAN 6.2)
-
 Syntax is:
 Vsan-ReplaceWitness.ps1 -ClusterName <ClusterName> -NewWitness <WitnessFQDN>
 
@@ -83,13 +81,24 @@ If($Cluster.VsanEnabled){
 
 					# If it is the VMware vSAN Witness Appliance, then proceed
 					If ($IsVsanWitnessAppliance.Value -eq "1"){
-						Write-Host "$NewWitness is a vSAN Witness Appliance, proceeding" -foregroundcolor black -backgroundcolor green
+						Write-Host "$NewWitness is a vSAN Witness Appliance." -foregroundcolor black -backgroundcolor green
+						
+						# Check to make sure a VMKernel port is tagged for vSAN Traffic, otherwise exit. Could possibly tag a VMkernel next time
+						If ( Get-VMHost $NewWitness | Get-VMHostNetworkAdapter | Where{$_.VsanTrafficEnabled}) {
+							Write-Host "$NewWitness has a VMKernel port setup for vSAN Traffic. Proceeding."  -foregroundcolor black -backgroundcolor green
+						} else {
+							Write-Host "$NewWitness does not have a VMKernel port setup for vSAN Traffic. Exiting" -foregroundcolor red -backgroundcolor white
+							Exit 
+						}
 					} else {
+						# The Witness isn't a vSAN Witness Appliance, so exit 
 						Write-Host "$NewWitness is not a vSAN Witness Appliance, stopping" -foregroundcolor red -backgroundcolor white
 						Write-Host "This script only supports using the vSAN Witness Appliance"  -foregroundcolor red -backgroundcolor white
 						Exit
 					}
 				}
+				
+				# If the NewWitness isn't present in vCenter, suggest deploying one and rerun this script
 				Catch [VMware.VimAutomation.Sdk.Types.V1.ErrorHandling.VimException.VimException]{
 					Write-Host "The New Witness, $NewWitness, was not found.         " -foregroundcolor red -backgroundcolor white
 					Write-Host "Please deploy a vSAN Witness Appliance and rerun this script."  -foregroundcolor black -backgroundcolor white
@@ -99,20 +108,24 @@ If($Cluster.VsanEnabled){
 				Write-Host "$Cluster is a $SCTYPE Cluster"
 				#Write-Host "The Preferred Fault Domain is ""$PFD"""
 				Write-Host "Current Witness:  ""$CWH"" New Witness: ""$NewWitness"""
-					
+				
+				# Get the disk group of the existing vSAN Witness
 				$CWHDG = Get-VsanDiskGroup | Where-Object {$_.VMHost -like $CWH}
 
+				# Remove the existing disk group, so this Witness could be used later
 				Write-Host "Removing vSAN Disk Group from $CWH so it can be easily reused later" -foregroundcolor black -backgroundcolor white
 				Remove-VsanDiskGroup -VsanDiskGroup $CWHDG -DataMigrationMode "NoDataMigration" -Confirm:$False 
-				
+
+				# Set the cluster configuration to false - Necessary to swap Witness Appliances
 				Write-Host "Removing Witness $CWH from the vSAN cluster" -foregroundcolor black -backgroundcolor white
 				Set-VsanClusterConfiguration -Configuration $Cluster -StretchedClusterEnabled $false 
-			
+
+				# Set the cluster configuration to Stretched/2 Node, with the new witness and the previously preferred fault domain
 				Write-Host "Adding Witness $NewWitness and reenabling the $SCTYPE Cluster" -foregroundcolor black -backgroundcolor white
 				Set-VsanClusterConfiguration -Configuration $Cluster -StretchedClusterEnabled $True -PreferredFaultDomain $PFD -WitnessHost $NewWitness -WitnessHostCacheDisk mpx.vmhba1:C0:T2:L0 -WitnessHostCapacityDisk mpx.vmhba1:C0:T1:L0
 
 			} else {
-			
+				# Don't let an admin remove the existing witness and re-add it
 				Write-Host "$NewWitness is already the Witness for the $ClusterName Cluster"   -foregroundcolor black -backgroundcolor white
 			}
 			
@@ -122,8 +135,5 @@ If($Cluster.VsanEnabled){
 			Write-Host "$Cluster.Name is not a Stretched Cluster " -foregroundcolor black -backgroundcolor green
 			
 		}
-
-		Write-Host " "
-
 		            
     }
