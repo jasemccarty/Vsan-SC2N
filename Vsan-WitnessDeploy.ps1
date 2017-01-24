@@ -10,7 +10,9 @@ Website: http://www.jasemccarty.com
 Using runGuestOpInVM from VirtuallyGhetto
 
 .DESCRIPTION
-This script sets the network parameters for the vSAN Witness Appliance
+This script deploys a vSAN 6.5 Witness Appliance, configures networking, 
+adds it to vCenter, sets static routes, and makes the Witness Host available 
+for use in a vSAN Stretched or 2 Node Cluster
 Syntax is:
 Vsan-WitnessDeploy.ps1 
 
