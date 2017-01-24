@@ -19,31 +19,29 @@ Vsan-WitnessDeploy.ps1
 #>
 
 # vCenter Server to deploy the Witness Appliance
-$VIServer = "vcsa.vcorp.com"                                                     # vCenter Server we're using
+$VIServer = "vcsa.demo.com"                                                      # vCenter Server we're using
 $VIUsername = "administrator@vsphere.local"                                      # user for vCenter
 $VIPassword = "VMware1!"                                                         # password for vCenter user
 
 # Full Path to the vSAN Witness Appliance & Cluster
 $vSANWitnessApplianceOVA = "C:\VMware-VirtualSAN-Witness-6.5.0-4564106.ova"      # vSAN Witness Appliance OVA location
-$TargetCluster = "WDC" 			                                                     # Cluster the OVA will be deployed to
-$NtpHost1 = "ntp0.eng.vmware.com"
-$NtpHost2 = "ntp1.eng.vmware.com"
-
+$TargetCluster = "WDC" 	                                                         # Cluster the OVA will be deployed to
+$NtpHost1 = "ntp0.eng.vmware.com"                                                # NTP Host 1
+$NtpHost2 = "ntp1.eng.vmware.com"                                                # NTP Host 2
 
 # Management Network Properties
-$WitVmName = "Witness4"                                                          # Name of the Witness VM
+$WitVmName = "WitnessName"                                                       # Name of the Witness VM
 $WitVmPass = "VMware1!"                                                          # Witness VM root password
-$WitVmDNS1  = "10.198.6.79"                                                      # DNS Server1
-$WitVmDNS2  = "10.142.7.1"                                                       # DNS Server2
-$WitVmFQDN = "witness4.demo.robo"                                                # DNS Address of the Witness VM
-$WitVMK0IP = "10.198.6.16"                                                       # IP address of VMK0, the Management VMK
-$WitVMK0NM = "255.255.252.0"                                                     # Netmask of VMK0
-$WitVMK0GW = "10.198.7.253"                                                      # Default System Gateway
+$WitVmDNS1  = "10.10.10.1"                                                       # DNS Server1
+$WitVmDNS2  = "10.10.10.2"                                                       # DNS Server2
+$WitVmFQDN = "witnessname.demo.com"                                              # DNS Address of the Witness VM
+$WitVMK0IP = "10.10.10.12"                                                       # IP address of VMK0, the Management VMK
+$WitVMK0NM = "255.255.255.0"                                                     # Netmask of VMK0
+$WitVMK0GW = "10.10.10.1"                                                        # Default System Gateway
 $WitVMK0NW = "VM Network"                                                        # The network name that the Managment VMK will reside on
 
-
 # Witness Network Properties
-$WitVMK1IP = "172.16.1.16"                                                       # IP address of VMK1, the WitnessPg VMK
+$WitVMK1IP = "172.16.1.12"                                                       # IP address of VMK1, the WitnessPg VMK
 $WitVMK1NM = "255.255.255.0"                                                     # Netmask of VMK1
 $WitVMK1NW = "VM Network"                                                        # The network name that the Witness VMK will reside on
 $WitDeploymentSize = "tiny"                                                      # The OVA deployment size. Options are "tiny","normal", and "large"
