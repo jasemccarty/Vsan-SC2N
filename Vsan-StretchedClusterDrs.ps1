@@ -1,5 +1,5 @@
 <#==========================================================================
-Script Name: Vsan-StretchedClusterDrsOnTag.ps1
+Script Name: Vsan-StretchedClusterDrs.ps1
 Created on: 4/20/2017 
 Created by: Jase McCarty
 Github: http://www.github.com/jasemccarty
@@ -16,6 +16,7 @@ This requires PowerCLI 6.5.1 and has been tested on vSAN 6.6
 .SYNTAX
 Vsan-StretchedClusterDrsOnTag.ps1 -VCENTER <VCENTER> -CLUSTER <CusterName>
 
+Requires VM's to have a Tag named identically to the name of a Site (either Preferred or Secondary)
 #>
 
 # Set our Parameters
