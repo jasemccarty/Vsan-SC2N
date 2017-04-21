@@ -1,5 +1,5 @@
 <#==========================================================================
-Script Name: Vsan-StretchedClusterDrs.ps1
+Script Name: Vsan-StretchedClusterDrsRules.ps1
 Created on: 4/20/2017 
 Created by: Jase McCarty
 Github: http://www.github.com/jasemccarty
