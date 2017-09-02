@@ -32,7 +32,7 @@ Vsan-2NForcedCache.ps1 -ClusterName <ClusterName> -ForceCache disable
 )
 
 # Must be connected to vCenter Server 1st
-# Connect-VIServer
+# Connect-VIServer <server> -user <user> -password <password>
 
 # Get the Cluster Name
 $Cluster = Get-Cluster -Name $ClusterName
