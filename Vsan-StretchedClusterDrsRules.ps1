@@ -8,8 +8,13 @@ Website: http://www.jasemccarty.com
 ===========================================================================
 
 .DESCRIPTION
-This script will go through each host in a designated cluster and 
-set /VSAN/SwapThickProvisionDisabled to either Thin or Space Reserved (Thick)
+This script can be run against a vSAN Stretched Cluster to create Host Groups and VM Groups.
+
+The script requires PowerCLI 6.5.1, released 4/20/2017 and has been tested against vSAN 6.6.
+Using PowerCLI 6.5.1, this could still be used against vSAN 6.1/6.2/6.5 Stretched Clusters.
+
+VM's that do not have a Site Affinity vSAN 6.6. Policy, will require a VM Tag for proper site assignment.
+Also, at least one VM must reside in a site for a VM Group to be created for that site.
 
 This requires PowerCLI 6.5.1 and has been tested on vSAN 6.6
 
