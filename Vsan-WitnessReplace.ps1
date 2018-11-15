@@ -132,6 +132,14 @@ If($Cluster.VsanEnabled){
 				Write-Host "Adding Witness $NewWitness and reenabling the $SCTYPE Cluster" -foregroundcolor black -backgroundcolor white
 				Set-VsanClusterConfiguration -Configuration $Cluster -StretchedClusterEnabled $True -PreferredFaultDomain $PFD -WitnessHost $NewWitness -WitnessHostCacheDisk mpx.vmhba1:C0:T2:L0 -WitnessHostCapacityDisk mpx.vmhba1:C0:T1:L0
 
+				# Fix all obects operation
+					# Load the vSAN vC Cluster Health System View
+					$VVCHS = Get-VsanView -Id "VsanVcClusterHealthSystem-vsan-cluster-health-system"
+
+					# Invoke the Fix for all objects
+					Write-Host "Issuing a repair all objects command"
+					$RepairTask = $VVCHS.VsanHealthRepairClusterObjectsImmediate($Cluster.ExtensionData.MoRef,$null) 
+
 			} else {
 				# Don't let an admin remove the existing witness and re-add it
 				Write-Host "$NewWitness is already the Witness for the $ClusterName Cluster"   -foregroundcolor black -backgroundcolor white
