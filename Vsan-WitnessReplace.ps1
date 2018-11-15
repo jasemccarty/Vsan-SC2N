@@ -1,6 +1,7 @@
 <#==========================================================================
 Script Name: Vsan-WitnessReplace.ps1
 Created on: 12/18/2016 
+Updated on: 11/14/2018
 Created by: Jase McCarty
 Github: http://www.github.com/jasemccarty
 Twitter: @jasemccarty
@@ -19,19 +20,10 @@ Vsan-ReplaceWitness.ps1 -ClusterName <ClusterName> -NewWitness <WitnessFQDN>
 
 # Set our Parameters
 [CmdletBinding()]Param(
-
-
-  [Parameter(Mandatory=$True)]
-  [string]$ClusterName,
-
-  [Parameter(Mandatory = $true)]
-  [String]$NewWitness
-
+[Parameter(Mandatory=$True)][string]$ClusterName,
+[Parameter(Mandatory = $true)][String]$NewWitness
 )
 	
-#Connect-VIServer $vCenter
-
-
 # Check to see the cluster exists
 Try {
 	# Check to make sure the New Witness Host has already been added to vCenter
@@ -65,21 +57,18 @@ If($Cluster.VsanEnabled){
 
 		# We'll need to see what the name of the current witness is.
 		$CWH = $VsanConfig.WitnessHost
-		
-		
+				
 			# If the Old & New Witness are named the same, no need to perform a replacement
 			If ($NewWitness -ne $CWH.Name) {
 			
 				# Check to make sure the New Witness Host has already been added to vCenter
-				Try {
-				
+				Try {		
 					# Get the Witness Host
 					$NewWitnessHost = Get-VMHost -Name $NewWitness -ErrorAction Stop
 
 					# See if it is the VMware vSAN Witness Appliance
 					$IsVsanWitnessAppliance = Get-AdvancedSetting -Entity $NewWitnessHost -Name Misc.vsanWitnessVirtualAppliance
 					
-
 					# If it is the VMware vSAN Witness Appliance, then proceed
 					If ($IsVsanWitnessAppliance.Value -eq "1"){
 						Write-Host "$NewWitness is a vSAN Witness Appliance." -foregroundcolor black -backgroundcolor green
@@ -117,7 +106,6 @@ If($Cluster.VsanEnabled){
 					# Get the disk group of the existing vSAN Witness
 					$CWHDG = Get-VsanDiskGroup | Where-Object {$_.VMHost -like $CWH} -ErrorAction SilentlyContinue
 				
-				
 					# Remove the existing disk group, so this Witness could be used later
 					Write-Host "Removing vSAN Disk Group from $CWH so it can be easily reused later" -foregroundcolor black -backgroundcolor white
 				    Remove-VsanDiskGroup -VsanDiskGroup $CWHDG -DataMigrationMode "NoDataMigration" -Confirm:$False 
@@ -132,13 +120,18 @@ If($Cluster.VsanEnabled){
 				Write-Host "Adding Witness $NewWitness and reenabling the $SCTYPE Cluster" -foregroundcolor black -backgroundcolor white
 				Set-VsanClusterConfiguration -Configuration $Cluster -StretchedClusterEnabled $True -PreferredFaultDomain $PFD -WitnessHost $NewWitness -WitnessHostCacheDisk mpx.vmhba1:C0:T2:L0 -WitnessHostCapacityDisk mpx.vmhba1:C0:T1:L0
 
-				# Fix all obects operation
-					# Load the vSAN vC Cluster Health System View
-					$VVCHS = Get-VsanView -Id "VsanVcClusterHealthSystem-vsan-cluster-health-system"
+				# Let's hang around while we wait for the Disk Group to be created on the Witness
+				While (-Not(Get-VsanDiskGroup -VMHost $NewWitness)) {
+					Get-VsanDisk -VMHost $NewWitness
+				}
 
-					# Invoke the Fix for all objects
-					Write-Host "Issuing a repair all objects command"
-					$RepairTask = $VVCHS.VsanHealthRepairClusterObjectsImmediate($Cluster.ExtensionData.MoRef,$null) 
+				# Fix all obects operation
+				# Load the vSAN vC Cluster Health System View
+				$VVCHS = Get-VsanView -Id "VsanVcClusterHealthSystem-vsan-cluster-health-system"
+
+				# Invoke the Fix for all objects
+				Write-Host "Issuing a repair all objects command"
+				$RepairTask = $VVCHS.VsanHealthRepairClusterObjectsImmediate($Cluster.ExtensionData.MoRef,$null) 
 
 			} else {
 				# Don't let an admin remove the existing witness and re-add it
