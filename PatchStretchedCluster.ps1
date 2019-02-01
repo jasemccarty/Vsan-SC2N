@@ -44,7 +44,7 @@ If ($ClusterConfiguration.StretchedClusterEnabled -eq $true) {
         Foreach ($NonComp in $NonCompBase.BaseLine) {
 
             # Report which baseline is the host is being patched with
-            Write-Host "Patching $TestHost with baseline:" $NonComp.Name
+            Write-Host "Patching $VMHost with baseline:" $NonComp.Name
             $VMHost | Update-Entity -Baseline (Get-Baseline -Name $NonComp.Name) -Confirm:$False
         }
     }
@@ -67,7 +67,7 @@ If ($ClusterConfiguration.StretchedClusterEnabled -eq $true) {
         Foreach ($NonComp in $NonCompBase.BaseLine) {
             
             # Report which baseline the host is being patched with
-            Write-Host "Patching $TestHost with baseline:" $NonComp.Name
+            Write-Host "Patching $VMHost with baseline:" $NonComp.Name
             $VMHost | Update-Entity -Baseline (Get-Baseline -Name $NonComp.Name) -Confirm:$False
         }
     }
