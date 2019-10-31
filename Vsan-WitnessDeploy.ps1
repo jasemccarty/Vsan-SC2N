@@ -1,7 +1,7 @@
 <#==========================================================================
 Script Name: Vsan-WitnessDeploy.ps1 (v2)
 Created on: 1/5/2017 
-Updated on: 11/1/2019
+Updated on: 10/31/2019
 Created by: Jase McCarty
 Github: http://www.github.com/jasemccarty
 Twitter: @jasemccarty
