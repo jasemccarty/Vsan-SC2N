@@ -244,8 +244,9 @@ sleep 30
 # Grab the Datacenter that Witnesses will reside in
 $witnessdc = Get-Datacenter -Name $witnessdatacenter
 
-# Grab the DNS entry for the guest
-$DnsName = [System.Net.Dns]::GetHostEntry($ipaddress0) 
+# Grab the DNS entry for the guest if possible
+Try {$DnsName = [System.Net.Dns]::GetHostEntry($ipaddress0)}
+Catch {Write-Host "Couldn't retrieve DNS Entry for $hostname";$DnsName=$ipaddress0}
 
 # If the DNS names match, add by DNS, if they don't add by IP
 if ($DnsName.HostName -eq $hostname){
