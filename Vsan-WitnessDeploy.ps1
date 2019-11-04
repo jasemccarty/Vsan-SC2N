@@ -276,5 +276,11 @@ If ($vsannetwork -ne "Management") {
 		$WitnessRoute2 = New-VMHostRoute $WitnessHost -Destination $route2ip -Gateway $route2gw -PrefixLength $route2pfx -Confirm:$False | Out-Null
 	}
 }
+
+Write-Host "Starting NTP Client"
+#Start NTP client service and set to automatic
+Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Start-VMHostService
+Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Set-VMHostService -policy "automatic"
+
 # Disconnect from vCenter
 Disconnect-VIServer -Server $session -Confirm:$false
