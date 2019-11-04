@@ -280,7 +280,7 @@ If ($vsannetwork -ne "Management") {
 Write-Host "Starting NTP Client"
 #Start NTP client service and set to automatic
 Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Start-VMHostService
-Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Set-VMHostService -policy "automatic"
+Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Set-VMHostService -policy "on"
 
 # Disconnect from vCenter
 Disconnect-VIServer -Server $session -Confirm:$false
