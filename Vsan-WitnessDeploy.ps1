@@ -1,5 +1,5 @@
 <#==========================================================================
-Script Name: Vsan-WitnessDeploy.ps1 (v2)
+Script Name: Vsan-WitnessDeploy.ps1 (v3)
 Created on: 1/5/2017 
 Updated on: 10/31/2019
 Created by: Jase McCarty
@@ -11,21 +11,19 @@ Website: http://www.jasemccarty.com
 Using runGuestOpInVM from VirtuallyGhetto
 
 .DESCRIPTION
-This script deploys a vSAN 6.0/6.5/6.7 & 6.7U3 Witness Appliance. 
+This script deploys a vSAN 6.0/6.5/6.7 & 6.7 P01 Witness Appliance.
 It: Configures networking, 
-Adds it to vCenter
-Sets static routes 
-Makes the Witness Host available 
-for use in a vSAN Stretched or 2 Node Cluster
-Syntax is:
-Vsan-WitnessDeploy.ps1 
+    Adds it to vCenter
+    Sets static routes 
+    Makes the Witness Host available for use in a vSAN Stretched or 2 Node Cluster
+
+Syntax is: Vsan-WitnessDeploy.ps1 
 
 .Notes
-
 #>
 
 # vCenter Server to deploy the Witness Appliance
-$VIServer          = "vcsa.demo.local"				# vCenter Server we're using
+$VIServer          = "vcsa.demo.local"              # vCenter Server we're using
 $VIUsername        = "administrator@vsphere.local"  # user for vCenter
 $VIPassword        = "VMware1!"                     # password for vCenter user
 
@@ -34,7 +32,7 @@ $vSANWitnessOVA    = "/Users/jase/Desktop/VMware-vSAN-Witness-6.5.0.update03-139
 $targetcluster     = "Cluster" 	                    # Cluster the OVA will be deployed to
 $ntp1              = "ntp0.eng.vmware.com"          # NTP Host 1
 $ntp2              = "ntp1.eng.vmware.com"          # NTP Host 2
-$datastore 	       = "DATASTORENAME"                # Name of the Target Datastore
+$datastore 	   = "DATASTORENAME"                # Name of the Target Datastore
 
 # Management Network Properties
 $vmname            = "WITNESS"                      # Name of the Witness VM
@@ -42,6 +40,7 @@ $passwd            = "VMware1!"                     # Witness VM root password
 $dns1              = "10.198.16.1"                  # DNS Server1
 $dns2              = "10.198.16.2"                  # DNS Server2
 $hostname          = "witness.satm.eng.vmware.com"  # DNS Address of the Witness VM
+$dnsdomain         = "satm.eng.vmware.com"          # DNS Search Domain
 $ipaddress0        = "10.198.7.200"                 # IP address of VMK0, the Management VMK
 $netmask0          = "255.255.253.0"                # Netmask of VMK0
 $gateway0          = "10.198.7.253"                 # Default System Gateway
@@ -51,7 +50,7 @@ $network0          = "Cloud"                        # The network name that the 
 $ipaddress1        = "172.16.1.12"                  # IP address of VMK1, the WitnessPg VMK
 $netmask1          = "255.255.255.0"                # Netmask of VMK1
 $network1          = "Cloud"                        # The network name that the Witness VMK will reside on
-$deploymentsize    = "large"                         # The OVA deployment size. Options are "tiny","normal", and "large"
+$deploymentsize    = "tiny"                         # The OVA deployment size. Options are "tiny","normal", and "large"
 $witnessdatacenter = "Witness"                      # The Datacenter that the Witness Host will be added to 
 
 # Witness Static Routes
@@ -64,7 +63,7 @@ $route2gw          = "172.16.1.1"                   # Gateway to Site B that VMK
 $route2pfx         = "24"                           # Network Prefix
 
 # vSAN Traffic Tagged NIC Selection 
-$vsannetwork       = "Management"                   # 'Management' or 'Secondary' NIC
+$vsannetwork       = "Secondary"                    # 'Management' or 'Secondary' NIC
 
 # Credit William Lam
 # Using PowerCLI to invoke Guest Operations API to a Nested ESXi VM
@@ -112,10 +111,30 @@ $vCenter = $global:DefaultVIServer
 $ovfConfig = Get-OvfConfiguration -Ovf $vSANWitnessOVA
 
 # Set the Network Port Groups to use, the deployment size, and the root password for the vSAN Witness Appliance
-$ovfconfig.vsan.witness.root.passwd.value = $passwd
-$ovfconfig.NetworkMapping.Management_Network.value = $network0
-$ovfconfig.NetworkMapping.Witness_Network.value = $network1
-$ovfConfig.DeploymentOption.Value = $deploymentsize
+if ($ovfConfig.vsan) {
+	$ovfconfig.vsan.witness.root.passwd.value = $passwd
+	$ovfconfig.NetworkMapping.Management_Network.value = $network0
+	$ovfconfig.NetworkMapping.Witness_Network.value = $network1
+	$ovfConfig.DeploymentOption.Value = $deploymentsize
+	$WitnessGen = 0
+} else {
+	$ovfConfig.Common.guestinfo.passwd.value = $passwd
+	$ovfConfig.Common.guestinfo.ipaddress0.value = $ipaddress0
+	$ovfConfig.Common.guestinfo.netmask0.value = $netmask0
+	$ovfConfig.Common.guestinfo.gateway0.value = $gateway0
+	$ovfConfig.Common.guestinfo.hostname.value = $hostname
+	$ovfConfig.Common.guestinfo.dnsDomain.value = $dnsdomain
+	$ovfConfig.Common.guestinfo.dns.value = $dns1 + "," + $dns2
+	$ovfConfig.Common.guestinfo.ntp.value = $ntp1 + "," + $ntp2
+	$ovfConfig.Common.guestinfo.ipaddress1.value = $ipaddress1
+	$ovfConfig.Common.guestinfo.netmask1.value = $netmask1
+	$ovfConfig.Common.guestinfo.gateway1.value = $gateway1
+	$ovfConfig.Common.guestinfo.vsannetwork.value = $vsannetwork
+	$ovfconfig.NetworkMapping.Management_Network.value = $network0
+	$ovfconfig.NetworkMapping.Secondary_Network.value = $network1
+	$ovfConfig.DeploymentOption.Value = $deploymentsize    
+	$WitnessGen = 1
+}
 
 # VCSA 6.7 Workaround for tiny/large profiles
 If ($vCenter.Version -eq "6.7.0") {
@@ -199,50 +218,52 @@ $WitnessVm | Start-VM
 $esxi_username = "root"
 $esxi_password = $passwd
 
-# Wait until the tools are running because we'll need them to set the IP
-Write-host "Waiting for VM Tools to Start"
-do {
-	$toolsStatus = (Get-VM $vmname | Get-View).Guest.ToolsStatus
-	write-host "." -NoNewLine  #$toolsStatus
-	sleep 5
-} until ( $toolsStatus -eq 'toolsOk' )
-Write-Host ""
-Write-Host "VM Tools have started"
+        # Wait until the tools are running because we'll need them to set the IP
+        Write-host "Waiting for VM Tools to Start"
+        do {
+            $toolsStatus = (Get-VM $vmname | Get-View).Guest.ToolsStatus
+            write-host "." -NoNewLine  #$toolsStatus
+            sleep 5
+        } until ( $toolsStatus -eq 'toolsOk' )
+		Write-Host ""
+		Write-Host "VM Tools have started"
 
-sleep 20
+        sleep 20
 
-# Setup our commands to set IP/Gateway information
-$Command_Path = '/bin/python'
+    If ($WitnessGen -eq 0) {
 
-# CMD to set Management Network Settings
-$CMD_MGMT = '/bin/esxcli.py network ip interface ipv4 set -i vmk0 -I ' + $ipaddress0 + ' -N ' + $netmask0  + ' -t static;/bin/esxcli.py network ip route ipv4 add -N defaultTcpipStack -n default -g ' + $gateway0
-# CMD to set DNS & Hostname Settings
-$CMD_DNS = '/bin/esxcli.py network ip dns server add --server=' + $dns2 + ';/bin/esxcli.py network ip dns server add --server=' + $dns1 + ';/bin/esxcli.py system hostname set --fqdn=' + $hostname
+        # Setup our commands to set IP/Gateway information
+        $Command_Path = '/bin/python'
 
-# CMD to set the IP address of VMK1
-$CMD_VMK1_IP = '/bin/esxcli.py network ip interface ipv4 set -i vmk1 -I ' + $ipaddress1 + ' -N ' + $netmask1  + ' -t static'
+        # CMD to set Management Network Settings
+        $CMD_MGMT = '/bin/esxcli.py network ip interface ipv4 set -i vmk0 -I ' + $ipaddress0 + ' -N ' + $netmask0  + ' -t static;/bin/esxcli.py network ip route ipv4 add -N defaultTcpipStack -n default -g ' + $gateway0
+        # CMD to set DNS & Hostname Settings
+        $CMD_DNS = '/bin/esxcli.py network ip dns server add --server=' + $dns2 + ';/bin/esxcli.py network ip dns server add --server=' + $dns1 + ';/bin/esxcli.py system hostname set --fqdn=' + $hostname + ';/bin/esxcli.py network ip dns search add -d ' + $dnsdomain
 
-# CMD to set the Gateway of VMK1
-$CMD_VMK1_GW = '/bin/esxcli.py network ip route ipv4 add -N defaultTcpipStack -n default -g ' + $gateway1
+        # CMD to set the IP address of VMK1
+        $CMD_VMK1_IP = '/bin/esxcli.py network ip interface ipv4 set -i vmk1 -I ' + $ipaddress1 + ' -N ' + $netmask1  + ' -t static'
 
-# Setup the Management Network
-Write-Host "Setting the Management Network"
-Write-Host
-runGuestOpInESXiVM -vm_moref $WitnessVm.ExtensionData.MoRef -guest_username $esxi_username -guest_password $esxi_password -guest_command_path $command_path -guest_command_args $CMD_MGMT
-runGuestOpInESXiVM -vm_moref $WitnessVm.ExtensionData.MoRef -guest_username $esxi_username -guest_password $esxi_password -guest_command_path $command_path -guest_command_args $CMD_DNS
+        # CMD to set the Gateway of VMK1
+        $CMD_VMK1_GW = '/bin/esxcli.py network ip route ipv4 add -N defaultTcpipStack -n default -g ' + $gateway1
+        
+	# Setup the Management Network
+        Write-Host "Setting the Management Network"
+        Write-Host
+        runGuestOpInESXiVM -vm_moref $WitnessVm.ExtensionData.MoRef -guest_username $esxi_username -guest_password $esxi_password -guest_command_path $command_path -guest_command_args $CMD_MGMT
+        runGuestOpInESXiVM -vm_moref $WitnessVm.ExtensionData.MoRef -guest_username $esxi_username -guest_password $esxi_password -guest_command_path $command_path -guest_command_args $CMD_DNS
 
-# Setup the Witness Portgroup
-Write-Host "Setting the WitnessPg Network"
-runGuestOpInESXiVM -vm_moref $WitnessVm.ExtensionData.MoRef -guest_username $esxi_username -guest_password $esxi_password -guest_command_path $command_path -guest_command_args $CMD_VMK1_IP
+	# Setup the Witness Portgroup
+        Write-Host "Setting the WitnessPg Network"
+        runGuestOpInESXiVM -vm_moref $WitnessVm.ExtensionData.MoRef -guest_username $esxi_username -guest_password $esxi_password -guest_command_path $command_path -guest_command_args $CMD_VMK1_IP
+}
 
-# For good measure, we'll wait 1 minute before trying to add the guest to vCenter
-Write-Host "Going to wait 60s for the host to become available before attempting to add it to vCenter"
-sleep 30
-Write-Host "Halfway there"
-sleep 30
+# For good measure, we'll wait before trying to add the guest to vCenter
+Write-Host "Going to wait for the host to become available before attempting to add it to vCenter"
 
-# Grab the Datacenter that Witnesses will reside in
-$witnessdc = Get-Datacenter -Name $witnessdatacenter
+
+# Wait until the vSAN Witness Host is up and running before proceeding
+Write-Host "Pinging $ipaddress0"
+Do {Write-Host "." -NoNewline} Until (!(Test-Connection $ipaddress0 -Quiet -Count 4 |Out-Null))		
 
 # Grab the DNS entry for the guest if possible
 Try {$DnsName = [System.Net.Dns]::GetHostEntry($ipaddress0)}
@@ -258,17 +279,19 @@ if ($DnsName.HostName -eq $hostname){
 }
 
 # Add the new Witness host to vCenter 
-Write-Host "Adding $NewWitnessName to the $witnessdc Datacenter"
-Add-VMHost $NewWitnessName -Location $witnessdc -user root -password $passwd -Force | Out-Null
+Write-Host "Adding $NewWitnessName to the $witnessdatacenter Datacenter"
+Add-VMHost $NewWitnessName -Location $witnessdatacenter -user root -password $passwd -Force | Out-Null
 
 # Grab the host, so we can set NTP & Static Routes (if exist & vsannetwork is not Management)
 $WitnessHost = Get-VMhost -Name $NewWitnessName
 
-If ($vsannetwork -ne "Management") {
+If ($vsannetwork -eq "Management") {
+	If ($WitnessGen -eq 0) {
 		# When set to Management, this uses vmk0 for vSAN Traffic
 		Get-VMHostNetworkAdapter -VMHost $WitnessHost | Where-Object {$_.DeviceName -eq "vmk1"} | Set-VMHostNetworkAdapter -VsanTrafficEnabled $false -Confirm:$False | Out-Null
 		Get-VMHostNetworkAdapter -VMHost $WitnessHost | Where-Object {$_.DeviceName -eq "vmk0"} | Set-VMHostNetworkAdapter -VsanTrafficEnabled $true -Confirm:$False | Out-Null		
-
+	}
+} else {
 	If ($route1ip -and $route2ip) {
 		# Set Static Routes
 		Write-Host "Setting Static Routes for the Witness Network"
@@ -277,10 +300,16 @@ If ($vsannetwork -ne "Management") {
 	}
 }
 
+# Set the NTP Server for Gen0 vSAN Witness Appliances (take care of in vSAN 6.7 P01 Witness Appliances
+If ($WitnessGen -eq 0) {
+	Add-VMHostNtpServer -NtpServer $ntp2 -VMHost $WitnessHost -Confirm:$False | Out-Null
+	Add-VMHostNtpServer -NtpServer $ntp1 -VMHost $WitnessHost -Confirm:$False | Out-Null
+}
+
 Write-Host "Starting NTP Client"
 #Start NTP client service and set to automatic
-Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Start-VMHostService
-Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Set-VMHostService -policy "on"
+Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Start-VMHostService | Out-Null
+Get-VmHostService -VMHost $WitnessHost | Where-Object {$_.key -eq "ntpd"} | Set-VMHostService -policy "on" | Out-Null 
 
 # Disconnect from vCenter
 Disconnect-VIServer -Server $session -Confirm:$false
